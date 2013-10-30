@@ -57,5 +57,5 @@ class Production:
                 'lot': output_move.lot.id,
                 'category': category_id,
                 'unit_price': output_move.unit_price,
-                'origin': output_move.id,
+                'origin': 'stock.move,%s'%output_move.id
                 }]
