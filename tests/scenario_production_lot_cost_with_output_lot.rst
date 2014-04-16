@@ -22,7 +22,9 @@ Create database::
 Install production_lot_cost Module::
 
     >>> Module = Model.get('ir.module.module')
-    >>> modules = Module.find([('name', '=', 'production_lot_cost')])
+    >>> modules = Module.find([
+    ...     ('name', 'in', ['production_lot_cost', 'production_output_lot']),
+    ...     ])
     >>> Module.install([x.id for x in modules], config.context)
     >>> Wizard('ir.module.module.install_upgrade').execute('upgrade')
 
@@ -65,10 +67,26 @@ Configuration production location::
     >>> warehouse.production_location = production_location
     >>> warehouse.save()
 
-Create product::
+Create lot sequence type and produced lots sequence::
+
+    >>> user = User(config.user)
+    >>> SequenceType = Model.get('ir.sequence.type')
+    >>> SequenceType(name='Lot',
+    ...     code='stock.lot',
+    ...     groups=[user.groups[0].id]).save()
+    >>> Sequence = Model.get('ir.sequence')
+    >>> lot_sequence = Sequence(name='Produced Lots',
+    ...     code='stock.lot',
+    ...     company=company)
+    >>> lot_sequence.save()
+
+Create product with lots required::
 
     >>> ProductUom = Model.get('product.uom')
     >>> unit, = ProductUom.find([('name', '=', 'Unit')])
+    >>> LotType = Model.get('stock.lot.type')
+    >>> lot_types = LotType.find([])
+
     >>> ProductTemplate = Model.get('product.template')
     >>> Product = Model.get('product.product')
     >>> product = Product()
@@ -78,7 +96,9 @@ Create product::
     >>> template.type = 'goods'
     >>> template.list_price = Decimal(30)
     >>> template.cost_price = Decimal(20)
+    >>> template.lot_required.extend(lot_types)
     >>> template.save()
+
     >>> product.template = template
     >>> product.save()
 
@@ -108,7 +128,7 @@ Create Components::
     >>> component2.template = template2
     >>> component2.save()
 
-Create Bill of Material::
+Create Bill of Material with infrastructure cost::
 
     >>> BOM = Model.get('production.bom')
     >>> BOMInput = Model.get('production.bom.input')
@@ -127,6 +147,7 @@ Create Bill of Material::
     >>> bom.outputs.append(output)
     >>> output.product = product
     >>> output.quantity = 1
+    >>> bom.infrastructure_cost = Decimal('1.0')
     >>> bom.save()
 
     >>> ProductBom = Model.get('product.product-production.bom')
@@ -155,7 +176,16 @@ Create an Inventory::
     >>> inventory.state
     u'done'
 
-Create a production of product::
+Configure production to automatically create lots on running state::
+
+    >>> ProductionConfig = Model.get('production.configuration')
+    >>> production_config = ProductionConfig(1)
+    >>> production_config.output_lot_creation = 'running'
+    >>> production_config.output_lot_sequence = lot_sequence
+    >>> production_config.save()
+
+Make a production with infrastructure cost and lots automatically created when
+production is Running::
 
     >>> Production = Model.get('production')
     >>> production = Production()
@@ -172,22 +202,6 @@ Create a production of product::
     >>> output.unit_price == Decimal('12.5')
     True
     >>> production.save()
-
-Create a Lot for the produced product::
-
-    >>> output, = production.outputs
-    >>> config._context['from_move'] = output.id
-    >>> Lot = Model.get('stock.lot')
-    >>> lot = Lot(number='1')
-    >>> lot.product = product
-    >>> lot.cost_price
-    >>> lot.save()
-    >>> output.lot = lot
-    >>> output.save()
-    >>> del config._context['from_move']
-
-Make the production::
-
     >>> Production.wait([production.id], config.context)
     >>> production.state
     u'waiting'
@@ -200,18 +214,28 @@ Make the production::
     >>> production.reload()
     >>> all(i.state == 'done' for i in production.inputs)
     True
+    >>> output, = production.outputs
+    >>> output.reload()
+    >>> output.lot != None
+    True
     >>> Production.done([production.id], config.context)
     >>> production.reload()
     >>> output, = production.outputs
     >>> output.state
     u'done'
-    >>> output.lot.cost_price == Decimal('12.5')
+    >>> len(output.lot.cost_lines)
+    2
+    >>> output.lot.cost_price == Decimal('13.5')
     True
 
-Make a production with infrastructure cost::
+Configure production to automatically create lots on done state::
 
-    >>> bom.infrastructure_cost = Decimal('1.0')
-    >>> bom.save()
+    >>> production_config.output_lot_creation = 'done'
+    >>> production_config.save()
+
+Make a production with infrastructure cost and lots automatically created when
+production is done::
+
     >>> production = Production()
     >>> production.product = product
     >>> production.bom = bom
@@ -226,16 +250,6 @@ Make a production with infrastructure cost::
     >>> output.unit_price == Decimal('12.5')
     True
     >>> production.save()
-    >>> output, = production.outputs
-    >>> config._context['from_move'] = output.id
-    >>> Lot = Model.get('stock.lot')
-    >>> lot = Lot(number='2')
-    >>> lot.product = product
-    >>> lot.cost_price
-    >>> lot.save()
-    >>> output.lot = lot
-    >>> output.save()
-    >>> del config._context['from_move']
     >>> Production.wait([production.id], config.context)
     >>> production.state
     u'waiting'
@@ -248,11 +262,15 @@ Make a production with infrastructure cost::
     >>> production.reload()
     >>> all(i.state == 'done' for i in production.inputs)
     True
+    >>> output, = production.outputs
+    >>> output.lot
     >>> Production.done([production.id], config.context)
     >>> production.reload()
     >>> output, = production.outputs
     >>> output.state
     u'done'
+    >>> output.lot != None
+    True
     >>> len(output.lot.cost_lines)
     2
     >>> output.lot.cost_price == Decimal('13.5')

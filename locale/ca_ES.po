@@ -1,0 +1,19 @@
+# 
+msgid ""
+msgstr "Content-Type: text/plain; charset=utf-8\n"
+
+msgctxt "field:production.bom,infrastructure_cost:"
+msgid "Infrastructure Cost"
+msgstr "Cost d'infraestructura"
+
+msgctxt "help:production.bom,infrastructure_cost:"
+msgid "Infrastructure cost per lot unit"
+msgstr "Cost d'infraestructura per unitat del lot"
+
+msgctxt "model:stock.lot.cost_category,name:cost_category_infrastructure_cost"
+msgid "Infrastructure Cost"
+msgstr "Cost d'infraestructura"
+
+msgctxt "model:stock.lot.cost_category,name:cost_category_inputs_cost"
+msgid "Inputs Cost"
+msgstr "Cost moviments entrada"

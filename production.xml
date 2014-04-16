@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- The COPYRIGHT file at the top level of this repository contains the full
+     copyright notices and license terms. -->
+<tryton>
+    <data>
+        <record model="ir.ui.view" id="bom_view_form">
+            <field name="model">production.bom</field>
+            <field name="inherit" ref="production.bom_view_form"/>
+            <field name="name">bom_form</field>
+        </record>
+    </data>
+    <data noupdate="1">
+        <record model="stock.lot.cost_category"
+                id="cost_category_inputs_cost">
+            <field name="name">Inputs Cost</field>
+        </record>
+        <record model="stock.lot.cost_category"
+                id="cost_category_infrastructure_cost">
+            <field name="name">Infrastructure Cost</field>
+        </record>
+    </data>
+</tryton>

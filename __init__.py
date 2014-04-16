@@ -7,6 +7,7 @@ from .production import *
 
 def register():
     Pool.register(
+        BOM,
         Lot,
         Production,
         module='production_lot_cost', type_='model')
