@@ -60,35 +60,28 @@ class Production:
         to_create = []
         for production in productions:
             for output in production.outputs:
+                if not output.lot:
+                    continue
+                if not output.lot.cost_lines:
+                    cost_lines = production._get_output_lot_cost_lines(output)
+                    output.lot.cost_lines = cost_lines
+                    output.lot.save()
                 if (production.infrastructure_cost and
                         output.product == production.product):
                     output.unit_price += production.infrastructure_cost
                     output.save()
-                if not output.lot:
-                    continue
-                if not output.lot.cost_lines:
-                    cost_lines = production._get_output_lot_cost_lines(output,
-                        added_infrastructure_cost=True)
-                    output.lot.cost_lines = cost_lines
-                    output.lot.save()
 
         LotCostLine.create(to_create)
         super(Production, cls).done(productions)
 
     def get_output_lot(self, output):
-        pool = Pool()
-        Config = pool.get('production.configuration')
-        config = Config(1)
-
         lot = super(Production, self).get_output_lot(output)
-        cost_lines = self._get_output_lot_cost_lines(output,
-            config.output_lot_creation == 'done')
+        cost_lines = self._get_output_lot_cost_lines(output)
         if cost_lines and not getattr(lot, 'cost_lines', False):
             lot.cost_lines = cost_lines
         return lot
 
-    def _get_output_lot_cost_lines(self, output_move,
-            added_infrastructure_cost=False):
+    def _get_output_lot_cost_lines(self, output_move):
         '''
         Return a list of unpersistent stock.lot.cost_line instances to be
         writen in cost_lines field of output_move's lot (the returned lines
@@ -102,14 +95,9 @@ class Production:
         infrastructure_category_id = ModelData.get_id('production_lot_cost',
             'cost_category_infrastructure_cost')
 
-        unit_price = output_move.unit_price
-        #Infrastructure cost already added before so we must rest it.
-        if (added_infrastructure_cost and self.infrastructure_cost and
-                output_move.product == self.product):
-            unit_price -= self.infrastructure_cost
         res = [
             self._get_output_lot_cost_line(output_move, inputs_category_id,
-                unit_price),
+                output_move.unit_price),
             ]
 
         if self.product == output_move.product and self.infrastructure_cost:
