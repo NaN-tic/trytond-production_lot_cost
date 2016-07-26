@@ -10,4 +10,5 @@ def register():
         BOM,
         Lot,
         Production,
+        StockMove,
         module='production_lot_cost', type_='model')
