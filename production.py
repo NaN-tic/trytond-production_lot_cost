@@ -129,8 +129,21 @@ class StockMove:
         infrastructure_category_id = ModelData.get_id('production_lot_cost',
             'cost_category_infrastructure_cost')
 
-        # Unit price of cost_line should not include infrastructure_cost
+        # Unit price of cost_line should not include infrastructure_cost but
+        # as production.cost computed method is overriden and it includes this
+        # cost, here we must compute the original production cost again
         production = self.production_output
+        cost = Decimal(0)
+        for input_ in production.inputs:
+            if input_.cost_price is not None:
+                cost_price = input_.cost_price
+            else:
+                cost_price = input_.product.cost_price
+            cost += (Decimal(str(input_.internal_quantity)) * cost_price)
+
+        digits = production.__class__.cost.digits
+        cost = cost.quantize(Decimal(str(10 ** -digits[1])))
+
         factor = production.bom.compute_factor(production.product,
             production.quantity or 0, production.uom)
         digits = self.__class__.unit_price.digits
@@ -142,8 +155,7 @@ class StockMove:
                 res.append(
                     self._get_production_output_lot_cost_line(
                         inputs_category_id,
-                        Decimal(production.cost / Decimal(str(quantity))
-                            ).quantize(digit))
+                        Decimal(cost / Decimal(str(quantity))).quantize(digit))
                     )
 
         production = self.production_output
