@@ -12,28 +12,14 @@ Imports::
     >>> from dateutil.relativedelta import relativedelta
     >>> from decimal import Decimal
     >>> from proteus import config, Model, Wizard
+    >>> from trytond.tests.tools import activate_modules
     >>> from trytond.modules.company.tests.tools import create_company, \
     ...     get_company
     >>> today = datetime.date.today()
 
-Create database::
+Activate production_output_lot and production_lot_cost::
 
-    >>> config = config.set_trytond()
-    >>> config.pool.test = True
-
-Install production_lot_cost Module::
-
-    >>> Module = Model.get('ir.module')
-    >>> modules = Module.find([
-    ...     ('name', '=', 'production_output_lot'),
-    ...     ])
-    >>> Module.install([x.id for x in modules], config.context)
-    >>> Wizard('ir.module.install_upgrade').execute('upgrade')
-    >>> modules = Module.find([
-    ...     ('name', '=', 'production_lot_cost'),
-    ...     ])
-    >>> Module.install([x.id for x in modules], config.context)
-    >>> Wizard('ir.module.install_upgrade').execute('upgrade')
+    >>> config = activate_modules(['production_output_lot', 'production_lot_cost'])
 
 Create company::
 
@@ -80,12 +66,12 @@ Create product with lots required::
     >>> template.name = 'product'
     >>> template.default_uom = unit
     >>> template.type = 'goods'
+    >>> template.producible = True
     >>> template.list_price = Decimal(30)
-    >>> template.cost_price = Decimal(20)
     >>> template.lot_required.extend(lot_types)
     >>> template.save()
-
-    >>> product.template = template
+    >>> product, = template.products
+    >>> product.cost_price = Decimal(20)
     >>> product.save()
 
 Create Components::
@@ -96,9 +82,9 @@ Create Components::
     >>> template1.default_uom = unit
     >>> template1.type = 'goods'
     >>> template1.list_price = Decimal(5)
-    >>> template1.cost_price = Decimal(1)
     >>> template1.save()
-    >>> component1.template = template1
+    >>> component1, = template1.products
+    >>> component1.cost_price = Decimal(1)
     >>> component1.save()
 
     >>> meter, = ProductUom.find([('name', '=', 'Meter')])
@@ -109,9 +95,9 @@ Create Components::
     >>> template2.default_uom = meter
     >>> template2.type = 'goods'
     >>> template2.list_price = Decimal(7)
-    >>> template2.cost_price = Decimal(5)
     >>> template2.save()
-    >>> component2.template = template2
+    >>> component2, = template2.products
+    >>> component2.cost_price = Decimal(5)
     >>> component2.save()
 
 Create Bill of Material with infrastructure cost::
