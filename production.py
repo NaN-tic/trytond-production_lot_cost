@@ -61,12 +61,8 @@ class Production:
 
     @classmethod
     def done(cls, productions):
-        pool = Pool()
-        LotCostLine = pool.get('stock.lot.cost_line')
-
         super(Production, cls).done(productions)
 
-        to_create = []
         for production in productions:
             for output in production.outputs:
                 if not output.lot:
@@ -75,8 +71,6 @@ class Production:
                     cost_lines = output._get_production_output_lot_cost_lines()
                     output.lot.cost_lines = cost_lines
                     output.lot.save()
-
-        LotCostLine.create(to_create)
 
 
 class StockMove:
@@ -123,6 +117,7 @@ class StockMove:
         '''
         pool = Pool()
         ModelData = pool.get('ir.model.data')
+        LotCostLine = pool.get('stock.lot.cost_line')
 
         inputs_category_id = ModelData.get_id('production_lot_cost',
             'cost_category_inputs_cost')
@@ -141,12 +136,13 @@ class StockMove:
                 cost_price = input_.product.cost_price
             cost += (Decimal(str(input_.internal_quantity)) * cost_price)
 
+
         digits = production.__class__.cost.digits
         cost = cost.quantize(Decimal(str(10 ** -digits[1])))
 
         factor = production.bom.compute_factor(production.product,
             production.quantity or 0, production.uom)
-        digits = self.__class__.unit_price.digits
+        digits = LotCostLine.unit_price.digits
         digit = Decimal(str(10 ** -digits[1]))
         res = []
         for output in production.bom.outputs:
