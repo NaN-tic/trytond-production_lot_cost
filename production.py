@@ -140,12 +140,14 @@ class StockMove:
         digits = production.__class__.cost.digits
         cost = cost.quantize(Decimal(str(10 ** -digits[1])))
 
-        factor = production.bom.compute_factor(production.product,
-            production.quantity or 0, production.uom)
+        factor = 1
+        if production.bom: 
+            factor = production.bom.compute_factor(production.product,
+                production.quantity or 0, production.uom)
         digits = LotCostLine.unit_price.digits
         digit = Decimal(str(10 ** -digits[1]))
         res = []
-        for output in production.bom.outputs:
+        for output in production.bom and production.bom.outputs or []:
             quantity = output.compute_quantity(factor)
             if output.product == self.product and quantity:
                 res.append(
