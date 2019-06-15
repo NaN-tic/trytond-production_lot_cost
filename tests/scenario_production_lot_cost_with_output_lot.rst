@@ -146,7 +146,7 @@ Create an Inventory::
     >>> inventory.save()
     >>> Inventory.confirm([inventory.id], config.context)
     >>> inventory.state
-    u'done'
+    'done'
 
 Configure production to automatically create lots on running state::
 
@@ -169,14 +169,18 @@ production is Running::
     >>> output, = production.outputs
     >>> output.quantity == 2
     True
-    >>> production.cost == Decimal('25')
+    >>> production.click('wait')
+    >>> production.click('assign_force')
+    >>> production.click('run')
+    >>> production.click('done')
+    >>> production.cost == Decimal('25'), production.cost
     True
     >>> output.unit_price
     Decimal('13.5000')
     >>> production.save()
     >>> Production.wait([production.id], config.context)
     >>> production.state
-    u'waiting'
+    'waiting'
     >>> Production.assign_try([production.id], config.context)
     True
     >>> production.reload()
@@ -194,7 +198,7 @@ production is Running::
     >>> production.reload()
     >>> output, = production.outputs
     >>> output.state
-    u'done'
+    'done'
     >>> len(output.lot.cost_lines)
     2
     >>> output.lot.cost_price == Decimal('13.5')
@@ -224,7 +228,7 @@ production is done::
     >>> production.save()
     >>> Production.wait([production.id], config.context)
     >>> production.state
-    u'waiting'
+    'waiting'
     >>> Production.assign_try([production.id], config.context)
     True
     >>> production.reload()
@@ -240,7 +244,7 @@ production is done::
     >>> production.reload()
     >>> output, = production.outputs
     >>> output.state
-    u'done'
+    'done'
     >>> output.lot != None
     True
     >>> len(output.lot.cost_lines)

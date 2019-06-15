@@ -4,19 +4,20 @@ from decimal import Decimal
 from trytond.model import fields
 from trytond.pool import Pool, PoolMeta
 from trytond.transaction import Transaction
+from trytond.exceptions import UserError
+from trytond.i18n import gettext
 
 __all__ = ['BOM', 'Lot', 'Production', 'StockMove']
-__metaclass__ = PoolMeta
 
 
-class BOM:
+class BOM(metaclass=PoolMeta):
     __name__ = 'production.bom'
     infrastructure_cost = fields.Numeric('Infrastructure Cost',
         digits=(16, 4),
         help='Infrastructure cost per lot unit')
 
 
-class Lot:
+class Lot(metaclass=PoolMeta):
     __name__ = 'stock.lot'
 
     def _on_change_product_cost_lines(self):
@@ -32,7 +33,7 @@ class Lot:
         return super(Lot, self)._on_change_product_cost_lines()
 
 
-class Production:
+class Production(metaclass=PoolMeta):
     __name__ = 'production'
 
     @property
@@ -52,17 +53,20 @@ class Production:
                     self.infrastructure_cost)
         return cost
 
-    def explode_bom(self):
-        super(Production, self).explode_bom()
-        outputs = self.outputs
-        for move in outputs:
-            if self.infrastructure_cost and move.product == self.product:
-                move.unit_price += self.infrastructure_cost
+    #def explode_bom(self):
+        #super(Production, self).explode_bom()
+        #outputs = self.outputs
+        #for move in outputs:
+            #if self.infrastructure_cost and move.product == self.product:
+                #move.unit_price += self.infrastructure_cost
 
     @classmethod
-    def done(cls, productions):
-        super(Production, cls).done(productions)
+    def set_cost(cls, productions):
+        Lot = Pool().get('stock.lot')
 
+        super(Production, cls).set_cost(productions)
+
+        to_save = []
         for production in productions:
             for output in production.outputs:
                 if not output.lot:
@@ -70,20 +74,13 @@ class Production:
                 if not output.lot.cost_lines:
                     cost_lines = output._get_production_output_lot_cost_lines()
                     output.lot.cost_lines = cost_lines
-                    output.lot.save()
+                    to_save.append(output.lot)
+        if to_save:
+            Lot.save(to_save)
 
 
-class StockMove:
+class StockMove(metaclass=PoolMeta):
     __name__ = 'stock.move'
-
-    @classmethod
-    def __setup__(cls):
-        super(StockMove, cls).__setup__()
-        cls._error_messages.update({
-                'uneven_costs': 'The costs (%(move_unit_price)s) of the move '
-                    '(%(move)s) does not match the cost (%(lot_unit_price)s) '
-                    'of the lot (%(lot)s).'
-                })
 
     def check_lot_cost(self, lot):
         '''
@@ -94,12 +91,12 @@ class StockMove:
         for cost_line in lot.cost_lines:
             lot_cost += cost_line.unit_price
         if self.unit_price != lot_cost:
-            self.raise_user_error('uneven_costs', {
-                    'move': self.rec_name,
-                    'move_unit_price': self.unit_price,
-                    'lot': self.lot,
-                    'lot_unit_price': lot_cost,
-                    })
+            raise UserError(gettext('production_lot_cost.msg_uneven_costs',
+                    move=self.rec_name,
+                    move_unit_price=self.unit_price,
+                    lot=self.lot,
+                    lot_unit_price=lot_cost,
+                    ))
 
     def get_production_output_lot(self):
         lot = super(StockMove, self).get_production_output_lot()
@@ -136,12 +133,11 @@ class StockMove:
                 cost_price = input_.product.cost_price
             cost += (Decimal(str(input_.internal_quantity)) * cost_price)
 
-
         digits = production.__class__.cost.digits
         cost = cost.quantize(Decimal(str(10 ** -digits[1])))
 
         factor = 1
-        if production.bom: 
+        if production.bom:
             factor = production.bom.compute_factor(production.product,
                 production.quantity or 0, production.uom)
         digits = LotCostLine.unit_price.digits

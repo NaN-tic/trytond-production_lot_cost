@@ -2,10 +2,6 @@
 Production Lot Cost Scenario
 ============================
 
-=============
-General Setup
-=============
-
 Imports::
 
     >>> import datetime
@@ -126,9 +122,9 @@ Create an Inventory::
     >>> inventory_line2.product = component2
     >>> inventory_line2.quantity = 10
     >>> inventory.save()
-    >>> Inventory.confirm([inventory.id], config.context)
+    >>> inventory.click('confirm')
     >>> inventory.state
-    u'done'
+    'done'
 
 Create a production of product::
 
@@ -142,9 +138,16 @@ Create a production of product::
     >>> output, = production.outputs
     >>> output.quantity == 2
     True
+    >>> production.click('wait')
+    >>> production.click('assign_force')
+    >>> production.click('run')
+    >>> production.click('done')
+    >>> production.state
+    'done'
     >>> production.cost == Decimal('25')
     True
-    >>> output.unit_price
+    >>> output.reload()
+    >>> output.unit_price, production.outputs, output.state
     Decimal('12.5000')
     >>> production.save()
 
@@ -165,7 +168,7 @@ Make the production::
 
     >>> Production.wait([production.id], config.context)
     >>> production.state
-    u'waiting'
+    'waiting'
     >>> Production.assign_try([production.id], config.context)
     True
     >>> production.reload()
@@ -179,7 +182,7 @@ Make the production::
     >>> production.reload()
     >>> output, = production.outputs
     >>> output.state
-    u'done'
+    'done'
     >>> output.lot.cost_price == Decimal('12.5')
     True
 
@@ -213,7 +216,7 @@ Make a production with infrastructure cost::
     >>> del config._context['from_move']
     >>> Production.wait([production.id], config.context)
     >>> production.state
-    u'waiting'
+    'waiting'
     >>> Production.assign_try([production.id], config.context)
     True
     >>> production.reload()
@@ -227,7 +230,7 @@ Make a production with infrastructure cost::
     >>> production.reload()
     >>> output, = production.outputs
     >>> output.state
-    u'done'
+    'done'
     >>> len(output.lot.cost_lines)
     2
     >>> output.lot.cost_price
