@@ -67,6 +67,7 @@ class Production(metaclass=PoolMeta):
         super(Production, cls).set_cost(productions)
 
         to_save = []
+        to_check = []
         for production in productions:
             for output in production.outputs:
                 if not output.lot:
@@ -75,8 +76,12 @@ class Production(metaclass=PoolMeta):
                     cost_lines = output._get_production_output_lot_cost_lines()
                     output.lot.cost_lines = cost_lines
                     to_save.append(output.lot)
+                to_check.append((output, output.lot))
         if to_save:
             Lot.save(to_save)
+        if to_check:
+            for move, lot in to_check:
+                move.check_lot_cost(lot)
 
 
 class StockMove(metaclass=PoolMeta):
@@ -103,7 +108,6 @@ class StockMove(metaclass=PoolMeta):
         cost_lines = self._get_production_output_lot_cost_lines()
         if cost_lines and not getattr(lot, 'cost_lines', False):
             lot.cost_lines = cost_lines
-        self.check_lot_cost(lot)
         return lot
 
     def _get_production_output_lot_cost_lines(self):
