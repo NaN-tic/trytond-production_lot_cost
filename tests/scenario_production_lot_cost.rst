@@ -138,18 +138,6 @@ Create a production of product::
     >>> output, = production.outputs
     >>> output.quantity == 2
     True
-    >>> production.click('wait')
-    >>> production.click('assign_force')
-    >>> production.click('run')
-    >>> production.click('done')
-    >>> production.state
-    'done'
-    >>> production.cost == Decimal('25')
-    True
-    >>> output.reload()
-    >>> output.unit_price, production.outputs, output.state
-    Decimal('12.5000')
-    >>> production.save()
 
 Create a Lot for the produced product::
 
@@ -166,23 +154,24 @@ Create a Lot for the produced product::
 
 Make the production::
 
-    >>> Production.wait([production.id], config.context)
+    >>> production.click('wait')
     >>> production.state
     'waiting'
-    >>> Production.assign_try([production.id], config.context)
+    >>> production.click('assign_try')
     True
-    >>> production.reload()
     >>> all(i.state == 'assigned' for i in production.inputs)
     True
-    >>> Production.run([production.id], config.context)
-    >>> production.reload()
+    >>> production.click('run')
     >>> all(i.state == 'done' for i in production.inputs)
     True
-    >>> Production.done([production.id], config.context)
-    >>> production.reload()
+    >>> production.click('done')
     >>> output, = production.outputs
     >>> output.state
     'done'
+    >>> production.cost == Decimal('25')
+    True
+    >>> output.unit_price
+    Decimal('12.5000')
     >>> output.lot.cost_price == Decimal('12.5')
     True
 
@@ -199,10 +188,6 @@ Make a production with infrastructure cost::
     >>> output, = production.outputs
     >>> output.quantity == 2
     True
-    >>> production.cost == Decimal('25')
-    True
-    >>> output.unit_price
-    Decimal('13.5000')
     >>> production.save()
     >>> output, = production.outputs
     >>> config._context['from_move'] = output.id
@@ -214,24 +199,26 @@ Make a production with infrastructure cost::
     >>> output.lot = lot
     >>> output.save()
     >>> del config._context['from_move']
-    >>> Production.wait([production.id], config.context)
+    >>> production.click('wait')
     >>> production.state
     'waiting'
-    >>> Production.assign_try([production.id], config.context)
+    >>> production.click('assign_try')
     True
-    >>> production.reload()
     >>> all(i.state == 'assigned' for i in production.inputs)
     True
-    >>> Production.run([production.id], config.context)
-    >>> production.reload()
+    >>> production.click('run')
     >>> all(i.state == 'done' for i in production.inputs)
     True
-    >>> Production.done([production.id], config.context)
-    >>> production.reload()
+    >>> production.click('done')
     >>> output, = production.outputs
     >>> output.state
     'done'
     >>> len(output.lot.cost_lines)
     2
+    >>> production.cost == Decimal('27')
+    True
+    >>> output, = production.outputs
+    >>> output.unit_price
+    Decimal('13.5000')
     >>> output.lot.cost_price
     Decimal('13.5000')
