@@ -28,7 +28,7 @@ class Lot(metaclass=PoolMeta):
         if context.get('from_move'):
             move = Move(context['from_move'])
             if getattr(move, 'production_output', False):
-                return None
+                return {}
 
         return super(Lot, self)._on_change_product_cost_lines()
 
