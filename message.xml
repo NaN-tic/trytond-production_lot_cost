@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <tryton>
-    <data group="1">
+    <data grouped="1">
         <record model="ir.message" id="msg_uneven_costs">
             <field name="text">The costs (%(move_unit_price)s) of the move (%(move)s) does not match the cost (%(lot_unit_price)s) of the lot (%(lot)s).</field>
         </record>
