@@ -56,8 +56,6 @@ Create product with lots required::
 
     >>> ProductUom = Model.get('product.uom')
     >>> unit, = ProductUom.find([('name', '=', 'Unit')])
-    >>> LotType = Model.get('stock.lot.type')
-    >>> lot_types = LotType.find([])
 
     >>> ProductTemplate = Model.get('product.template')
     >>> Product = Model.get('product.product')
@@ -68,7 +66,8 @@ Create product with lots required::
     >>> template.type = 'goods'
     >>> template.producible = True
     >>> template.list_price = Decimal(30)
-    >>> template.lot_required.extend(lot_types)
+    >>> template.lot_required = ['supplier', 'customer', 'lost_found',
+    ...     'storage', 'production']
     >>> template.save()
     >>> product, = template.products
     >>> product.cost_price = Decimal(20)
