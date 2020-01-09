@@ -92,15 +92,12 @@ class StockMove(metaclass=PoolMeta):
         If production output quantity is changed manually, it cannot be
         computed the lot cost, so lot must be created manually.
         '''
-        lot_cost = Decimal('0.0')
-        for cost_line in lot.cost_lines:
-            lot_cost += cost_line.unit_price
-        if self.unit_price != lot_cost:
+        if self.unit_price != lot.cost_price:
             raise UserError(gettext('production_lot_cost.msg_uneven_costs',
                     move=self.rec_name,
                     move_unit_price=self.unit_price,
                     lot=self.lot,
-                    lot_unit_price=lot_cost,
+                    lot_unit_price=lot.cost_price,
                     ))
 
     def get_production_output_lot(self):
