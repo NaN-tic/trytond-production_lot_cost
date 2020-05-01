@@ -6,6 +6,7 @@ from trytond.pool import Pool, PoolMeta
 from trytond.transaction import Transaction
 from trytond.exceptions import UserError
 from trytond.i18n import gettext
+from trytond.modules.product import price_digits
 
 __all__ = ['BOM', 'Lot', 'Production', 'StockMove']
 
@@ -40,6 +41,19 @@ class Production(metaclass=PoolMeta):
     def infrastructure_cost(self):
         if self.product and self.bom and self.bom.infrastructure_cost:
             return self.bom.infrastructure_cost
+
+    @property
+    def output_qty(self):
+        quantity = 0.
+        for output in self.outputs:
+            if output.product == self.product:
+                qty = output.quantity
+                if self.uom != output.uom:
+                    qty = self.uom.compute_qty(output.uom, output.quantity,
+                        self.uom, round=False)
+                quantity += qty
+
+        return quantity
 
     def get_cost(self, name):
         cost = super(Production, self).get_cost(name)
@@ -92,7 +106,21 @@ class StockMove(metaclass=PoolMeta):
         If production output quantity is changed manually, it cannot be
         computed the lot cost, so lot must be created manually.
         '''
-        if self.unit_price != lot.cost_price:
+        production = self.production_output
+
+        if self.uom != production.uom:
+            unit_price = self.uom.compute_price(self.uom, self.unit_price,
+                production.uom)
+        else:
+            unit_price = self.unit_price
+
+        digits = price_digits[1]
+        cost_price = Decimal(lot.cost_price).quantize(
+            Decimal(str(10 ** -digits)))
+        unit_price = Decimal(unit_price).quantize(
+            Decimal(str(10 ** -digits)))
+
+        if unit_price != cost_price:
             raise UserError(gettext('production_lot_cost.msg_uneven_costs',
                     move=self.rec_name,
                     move_unit_price=self.unit_price,
@@ -102,9 +130,10 @@ class StockMove(metaclass=PoolMeta):
 
     def get_production_output_lot(self):
         lot = super(StockMove, self).get_production_output_lot()
-        cost_lines = self._get_production_output_lot_cost_lines()
-        if cost_lines and not getattr(lot, 'cost_lines', False):
-            lot.cost_lines = cost_lines
+        if lot:
+            cost_lines = self._get_production_output_lot_cost_lines()
+            if cost_lines and not getattr(lot, 'cost_lines', False):
+                lot.cost_lines = cost_lines
         return lot
 
     def _get_production_output_lot_cost_lines(self):
@@ -115,7 +144,6 @@ class StockMove(metaclass=PoolMeta):
         '''
         pool = Pool()
         ModelData = pool.get('ir.model.data')
-        LotCostLine = pool.get('stock.lot.cost_line')
 
         inputs_category_id = ModelData.get_id('production_lot_cost',
             'cost_category_inputs_cost')
@@ -134,31 +162,35 @@ class StockMove(metaclass=PoolMeta):
                 cost_price = input_.product.cost_price
             cost += (Decimal(str(input_.internal_quantity)) * cost_price)
 
-        digits = production.__class__.cost.digits
-        cost = cost.quantize(Decimal(str(10 ** -digits[1])))
-
         factor = 1
+        res = []
         if production.bom:
             factor = production.bom.compute_factor(production.product,
                 production.quantity or 0, production.uom)
-        digits = LotCostLine.unit_price.digits
-        digit = Decimal(str(10 ** -digits[1]))
-        res = []
-        for output in production.bom and production.bom.outputs or []:
-            quantity = output.compute_quantity(factor)
-            if output.product == self.product and quantity:
+            for output in production.bom and production.bom.outputs or []:
+                quantity = output.compute_quantity(factor)
+                if output.product == self.product and quantity:
+                    res.append(
+                        self._get_production_output_lot_cost_line(
+                            inputs_category_id,
+                            Decimal(cost / Decimal(str(quantity))))
+                        )
+
+        elif (self.product == production.product and self.quantity):
+            quantity = production.output_qty
+            if quantity:
                 res.append(
                     self._get_production_output_lot_cost_line(
                         inputs_category_id,
-                        Decimal(cost / Decimal(str(quantity))).quantize(digit))
+                        Decimal(cost / Decimal(str(quantity))))
                     )
 
-        production = self.production_output
         if (self.product == production.product and
                 production.infrastructure_cost):
             infrastructure_cost = self._get_production_output_lot_cost_line(
                 infrastructure_category_id, production.infrastructure_cost)
             res.append(infrastructure_cost)
+
         return res
 
     def _get_production_output_lot_cost_line(self, category_id, cost):
