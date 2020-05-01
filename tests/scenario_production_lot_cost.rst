@@ -218,7 +218,7 @@ Make a production with infrastructure cost::
     >>> production.cost == Decimal('27')
     True
     >>> output, = production.outputs
-    >>> output.unit_price
-    Decimal('13.5000')
-    >>> output.lot.cost_price
-    Decimal('13.5000')
+    >>> output.unit_price == Decimal('13.5')
+    True
+    >>> output.lot.cost_price == Decimal('13.5000')
+    True
