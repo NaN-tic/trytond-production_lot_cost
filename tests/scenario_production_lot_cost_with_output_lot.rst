@@ -43,12 +43,10 @@ Create lot sequence type and produced lots sequence::
 
     >>> user = User(config.user)
     >>> SequenceType = Model.get('ir.sequence.type')
-    >>> SequenceType(name='Lot',
-    ...     code='stock.lot',
-    ...     groups=[user.groups[0].id]).save()
+    >>> sequence_type, = SequenceType.find([('name', '=', 'Stock Lot')])
     >>> Sequence = Model.get('ir.sequence')
     >>> lot_sequence = Sequence(name='Produced Lots',
-    ...     code='stock.lot',
+    ...     sequence_type=sequence_type,
     ...     company=company)
     >>> lot_sequence.save()
 
