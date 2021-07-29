@@ -156,7 +156,9 @@ class StockMove(metaclass=PoolMeta):
         production = self.production_output
         cost = Decimal(0)
         for input_ in production.inputs:
-            if input_.cost_price is not None:
+            if input_.lot and input_.lot.cost_price:
+                cost_price = input_.lot.cost_price
+            elif input_.cost_price is not None:
                 cost_price = input_.cost_price
             else:
                 cost_price = input_.product.cost_price
