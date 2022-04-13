@@ -8,7 +8,7 @@ from trytond.exceptions import UserError
 from trytond.i18n import gettext
 from trytond.modules.product import price_digits
 
-__all__ = ['BOM', 'Lot', 'Production', 'StockMove']
+__all__ = ['BOM', 'Lot', 'Production', 'StockMove', 'LotCostLine', 'Operation']
 
 
 class BOM(metaclass=PoolMeta):
@@ -88,14 +88,49 @@ class Production(metaclass=PoolMeta):
                     continue
                 if not output.lot.cost_lines:
                     cost_lines = output._get_production_output_lot_cost_lines()
+                    if hasattr(production, 'operations'):
+                        for operation in production.operations:
+                            cost_lines.append(operation._get_operation_lot_cost_line(output.quantity))
                     output.lot.cost_lines = cost_lines
                     to_save.append(output.lot)
                 to_check.append((output, output.lot))
+
         if to_save:
             Lot.save(to_save)
         if to_check:
             for move, lot in to_check:
                 move.check_lot_cost(lot)
+
+
+class LotCostLine(metaclass=PoolMeta):
+    __name__ = 'stock.lot.cost_line'
+
+    @classmethod
+    def _get_origin(cls):
+        return super()._get_origin() + ['production.operation',]
+
+
+class Operation(metaclass=PoolMeta):
+    __name__ = 'production.operation'
+
+    def _get_operation_lot_cost_line(self, quantity):
+        pool = Pool()
+        Cat = pool.get('stock.lot.cost_category')
+        LotCostLine = pool.get('stock.lot.cost_line')
+
+        cat = Cat.search([('name', '=', self.operation_type.name)])
+        if not cat:
+            cat = Cat(name=self.operation_type.name)
+            cat.save()
+        else:
+            cat, = cat
+        return LotCostLine(
+            category=cat.id,
+            unit_price=Decimal(float(self.cost)/quantity if quantity else 0),
+            origin=str(self),
+        )
+
+
 
 
 class StockMove(metaclass=PoolMeta):
@@ -135,6 +170,7 @@ class StockMove(metaclass=PoolMeta):
             if cost_lines and not getattr(lot, 'cost_lines', False):
                 lot.cost_lines = cost_lines
         return lot
+
 
     def _get_production_output_lot_cost_lines(self):
         '''
