@@ -10,3 +10,9 @@ def register():
         production.Production,
         production.StockMove,
         module='production_lot_cost', type_='model')
+    Pool.register(
+        LotCostLine,
+        Operation,
+        depends=['production_operation'],
+        module='production_lot_cost', type_='model')
+
