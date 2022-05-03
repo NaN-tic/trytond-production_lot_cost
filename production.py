@@ -170,7 +170,6 @@ class StockMove(metaclass=PoolMeta):
                 lot.cost_lines = cost_lines
         return lot
 
-
     def _get_production_output_lot_cost_lines(self):
         '''
         Return a list of unpersistent stock.lot.cost_line instances to be
