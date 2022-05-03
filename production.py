@@ -115,22 +115,21 @@ class Operation(metaclass=PoolMeta):
 
     def _get_operation_lot_cost_line(self, quantity):
         pool = Pool()
-        Cat = pool.get('stock.lot.cost_category')
+        Category = pool.get('stock.lot.cost_category')
         LotCostLine = pool.get('stock.lot.cost_line')
 
-        cat = Cat.search([('name', '=', self.operation_type.name)])
-        if not cat:
-            cat = Cat(name=self.operation_type.name)
-            cat.save()
+        categories = Category.search([('name', '=', self.operation_type.name)],
+            limit=1)
+        if not categories:
+            category = Category(name=self.operation_type.name)
+            category.save()
         else:
-            cat, = cat
+            category, = categories
         return LotCostLine(
-            category=cat.id,
+            category=category.id,
             unit_price=Decimal(float(self.cost)/quantity if quantity else 0),
             origin=str(self),
         )
-
-
 
 
 class StockMove(metaclass=PoolMeta):
