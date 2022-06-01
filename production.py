@@ -76,31 +76,44 @@ class Production(metaclass=PoolMeta):
 
     @classmethod
     def set_cost(cls, productions):
-        Lot = Pool().get('stock.lot')
+        pool = Pool()
+        Lot = pool.get('stock.lot')
+        CostLot = pool.get('stock.lot.cost_line')
+        try:
+            Operation = pool.get('production.operation')
+        except:
+            pass
 
         super(Production, cls).set_cost(productions)
 
         to_save = []
         to_check = []
         for production in productions:
+            output_quantity = sum([x.internal_quantity for x in
+                production.outputs if x.product == production.product])
             for output in production.outputs:
+                cost_lines = []
                 if not output.lot:
                     continue
                 if not output.lot.cost_lines:
                     cost_lines = output._get_production_output_lot_cost_lines()
-                    if hasattr(production, 'operations'):
-                        for operation in production.operations:
-                            cost_lines.append(operation._get_operation_lot_cost_line(output.quantity))
-                    output.lot.cost_lines = cost_lines
-                    to_save.append(output.lot)
+                if hasattr(production, 'operations'):
+                    operations = [x for x in production.operations if
+                        output.lot and x.lot == output.lot]
+                    cost_lines += Operation._get_operation_lot_cost_line(
+                        operations, output.internal_quantity, output)
+                    operations = [x for x in production.operations if
+                        x.lot is None]
+                    cost_lines += Operation._get_operation_lot_cost_line(
+                        operations, output_quantity, output)
+                to_save += cost_lines
                 to_check.append((output, output.lot))
 
         if to_save:
-            Lot.save(to_save)
+            CostLot.save(to_save)
         if to_check:
             for move, lot in to_check:
                 move.check_lot_cost(lot)
-
 
 class LotCostLine(metaclass=PoolMeta):
     __name__ = 'stock.lot.cost_line'
@@ -113,23 +126,38 @@ class LotCostLine(metaclass=PoolMeta):
 class Operation(metaclass=PoolMeta):
     __name__ = 'production.operation'
 
-    def _get_operation_lot_cost_line(self, quantity):
+    @classmethod
+    def _get_operation_lot_cost_line(cls, operations, quantity, move):
         pool = Pool()
         Category = pool.get('stock.lot.cost_category')
         LotCostLine = pool.get('stock.lot.cost_line')
 
-        categories = Category.search([('name', '=', self.operation_type.name)],
-            limit=1)
-        if not categories:
-            category = Category(name=self.operation_type.name)
-            category.save()
-        else:
-            category, = categories
-        return LotCostLine(
-            category=category.id,
-            unit_price=Decimal(float(self.cost)/quantity if quantity else 0),
-            origin=str(self),
-        )
+        categories = dict((x.name, x) for x in Category.search([]))
+
+        vals = {}
+        for operation in operations:
+            cat = operation.operation_type.name
+            if cat not in categories:
+                category = Category(name=cat)
+                category.save()
+                categories[cat] = category
+            else:
+                category = categories[cat]
+            if category not in vals:
+                vals[category] = 0
+
+            vals[category] += operation.cost
+
+        cost_lines = []
+        for category, cost in vals.items():
+            cost_line = LotCostLine(
+                category=category.id,
+                lot = move.lot,
+                unit_price=Decimal(float(cost)/quantity if quantity else 0),
+                origin=str(move),
+            )
+            cost_lines += [cost_line]
+        return cost_lines
 
 
 class StockMove(metaclass=PoolMeta):
@@ -209,7 +237,7 @@ class StockMove(metaclass=PoolMeta):
                     res.append(
                         self._get_production_output_lot_cost_line(
                             inputs_category_id,
-                            Decimal(cost / Decimal(str(quantity))))
+                            Decimal(cost / Decimal(str(quantity))), self.lot)
                         )
 
         elif (self.product == production.product and self.quantity):
@@ -218,22 +246,24 @@ class StockMove(metaclass=PoolMeta):
                 res.append(
                     self._get_production_output_lot_cost_line(
                         inputs_category_id,
-                        Decimal(cost / Decimal(str(quantity))))
+                        Decimal(cost / Decimal(str(quantity))), self.lot)
                     )
 
         if (self.product == production.product and
                 production.infrastructure_cost):
             infrastructure_cost = self._get_production_output_lot_cost_line(
-                infrastructure_category_id, production.infrastructure_cost)
+                infrastructure_category_id, production.infrastructure_cost,
+                self.lot)
             res.append(infrastructure_cost)
 
         return res
 
-    def _get_production_output_lot_cost_line(self, category_id, cost):
+    def _get_production_output_lot_cost_line(self, category_id, cost, lot):
         pool = Pool()
         LotCostLine = pool.get('stock.lot.cost_line')
         return LotCostLine(
             category=category_id,
             unit_price=cost,
-            origin=str(self)
+            origin=str(self),
+            lot=lot,
             )
