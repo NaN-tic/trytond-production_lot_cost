@@ -91,6 +91,11 @@ class Production(metaclass=PoolMeta):
         for production in productions:
             output_quantity = sum([x.internal_quantity for x in
                 production.outputs if x.product == production.product])
+            ops = []
+            for output in production.outputs:
+                ops += [x for x in production.operations if
+                        output.lot and x.lot == output.lot]
+
             for output in production.outputs:
                 cost_lines = []
                 if not output.lot:
@@ -103,7 +108,7 @@ class Production(metaclass=PoolMeta):
                     cost_lines += Operation._get_operation_lot_cost_line(
                         operations, output.internal_quantity, output)
                     operations = [x for x in production.operations if
-                        x.lot is None]
+                        (x.lot is None or x not in ops)]
                     cost_lines += Operation._get_operation_lot_cost_line(
                         operations, output_quantity, output)
                 to_save += cost_lines
