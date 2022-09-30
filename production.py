@@ -92,7 +92,7 @@ class Production(metaclass=PoolMeta):
             output_quantity = sum([x.internal_quantity for x in
                 production.outputs if x.product == production.product])
 
-            if hasattr(production, 'operations'):
+            if hasattr(production, 'operations') and hasattr(cls, 'lot'):
                 ops = []
                 for output in production.outputs:
                     ops += [x for x in production.operations if
@@ -104,7 +104,7 @@ class Production(metaclass=PoolMeta):
                     continue
                 if not output.lot.cost_lines:
                     cost_lines = output._get_production_output_lot_cost_lines()
-                if hasattr(production, 'operations'):
+                if hasattr(production, 'operations') and hasattr(cls, 'lot'):
                     operations = [x for x in production.operations if
                         output.lot and x.lot == output.lot]
                     cost_lines += Operation._get_operation_lot_cost_line(
