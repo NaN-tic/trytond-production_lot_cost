@@ -6,7 +6,7 @@ from trytond.pool import Pool, PoolMeta
 from trytond.transaction import Transaction
 from trytond.exceptions import UserError
 from trytond.i18n import gettext
-from trytond.modules.product import price_digits
+from trytond.modules.product import price_digits, round_price
 
 __all__ = ['BOM', 'Lot', 'Production', 'StockMove', 'LotCostLine', 'Operation']
 
@@ -183,11 +183,8 @@ class StockMove(metaclass=PoolMeta):
         else:
             unit_price = self.unit_price
 
-        digits = price_digits[1]
-        cost_price = Decimal(lot.cost_price).quantize(
-            Decimal(str(10 ** -digits)))
-        unit_price = Decimal(unit_price).quantize(
-            Decimal(str(10 ** -digits)))
+        cost_price = round_price(lot.cost_price)
+        unit_price = round_price(unit_price)
 
         if unit_price != cost_price:
             raise UserError(gettext('production_lot_cost.msg_uneven_costs',
