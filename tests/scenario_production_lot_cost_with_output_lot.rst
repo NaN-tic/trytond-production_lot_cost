@@ -171,7 +171,6 @@ production is Running::
     >>> production.state
     'waiting'
     >>> production.click('assign_try')
-    True
     >>> all(i.state == 'assigned' for i in production.inputs)
     True
     >>> production.click('run')
@@ -215,7 +214,6 @@ production is done::
     >>> production.state
     'waiting'
     >>> production.click('assign_try')
-    True
     >>> all(i.state == 'assigned' for i in production.inputs)
     True
     >>> production.click('run')

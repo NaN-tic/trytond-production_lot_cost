@@ -158,7 +158,6 @@ Make the production::
     >>> production.state
     'waiting'
     >>> production.click('assign_try')
-    True
     >>> all(i.state == 'assigned' for i in production.inputs)
     True
     >>> production.click('run')
@@ -203,7 +202,6 @@ Make a production with infrastructure cost::
     >>> production.state
     'waiting'
     >>> production.click('assign_try')
-    True
     >>> all(i.state == 'assigned' for i in production.inputs)
     True
     >>> production.click('run')
