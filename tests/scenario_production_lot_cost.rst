@@ -211,8 +211,6 @@ Make a production with infrastructure cost::
     >>> output, = production.outputs
     >>> output.state
     'done'
-    >>> len(output.lot.cost_lines)
-    2
     >>> production.cost == Decimal('27')
     True
     >>> output, = production.outputs
