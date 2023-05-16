@@ -6,13 +6,6 @@ from . import production
 def register():
     Pool.register(
         production.BOM,
-        production.Lot,
         production.Production,
-        production.StockMove,
-        module='production_lot_cost', type_='model')
-    Pool.register(
-        production.LotCostLine,
-        production.Operation,
-        depends=['production_operation'],
         module='production_lot_cost', type_='model')
 

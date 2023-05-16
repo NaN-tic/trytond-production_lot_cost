@@ -183,8 +183,6 @@ production is Running::
     >>> output, = production.outputs
     >>> output.state
     'done'
-    >>> len(output.lot.cost_lines)
-    2
     >>> production.cost == Decimal('27')
     True
     >>> output.unit_price
@@ -231,7 +229,5 @@ production is done::
     True
     >>> output.unit_price
     Decimal('13.5000')
-    >>> len(output.lot.cost_lines)
-    2
     >>> output.lot.cost_price == Decimal('13.5')
     True
