@@ -179,7 +179,7 @@ production is Running::
     >>> output, = production.outputs
     >>> output.lot != None
     True
-    >>> production.click('done')
+    >>> production.click('do')
     >>> output, = production.outputs
     >>> output.state
     'done'
@@ -219,7 +219,7 @@ production is done::
     True
     >>> output, = production.outputs
     >>> output.lot
-    >>> production.click('done')
+    >>> production.click('do')
     >>> output, = production.outputs
     >>> output.state
     'done'

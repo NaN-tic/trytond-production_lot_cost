@@ -163,7 +163,7 @@ Make the production::
     >>> production.click('run')
     >>> all(i.state == 'done' for i in production.inputs)
     True
-    >>> production.click('done')
+    >>> production.click('do')
     >>> output, = production.outputs
     >>> output.state
     'done'
@@ -207,7 +207,7 @@ Make a production with infrastructure cost::
     >>> production.click('run')
     >>> all(i.state == 'done' for i in production.inputs)
     True
-    >>> production.click('done')
+    >>> production.click('do')
     >>> output, = production.outputs
     >>> output.state
     'done'
